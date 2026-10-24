@@ -129,6 +129,32 @@ describe('Opportunities List Item Component', () => {
         it('should initialize correspondingOpportunityDeleted to true', () => {
           expect(component.correspondingOpportunityDeleted).toBe(true);
         });
+
+        for (const mobile of [false, true]) {
+          it(
+            'should permit viewing a resolved deleted skill on ' +
+              (mobile ? 'mobile' : 'desktop'),
+            () => {
+              component.onMobile = mobile;
+              component.showOpportunityButton = !mobile;
+              component.opportunity.allowViewingDeletedSkill = true;
+              const action = spyOn(component.clickActionButton, 'emit');
+              fixture.detectChanges();
+              const target: HTMLButtonElement =
+                fixture.nativeElement.querySelector(
+                  mobile
+                    ? 'button.e2e-test-opportunity-list-item'
+                    : '.e2e-test-opportunity-list-item-button'
+                );
+              expect(target.hidden).toBeFalse();
+              target.click();
+              expect(action).toHaveBeenCalledWith('1');
+              component.opportunity.allowViewingDeletedSkill = false;
+              fixture.detectChanges();
+              expect(target.hidden).toBeTrue();
+            }
+          );
+        }
       }
     );
 
@@ -200,6 +226,42 @@ describe('Opportunities List Item Component', () => {
         });
       }
     );
+  });
+
+  describe('when a skill opportunity is provided', () => {
+    beforeEach(() => {
+      component.opportunity = {
+        id: '1',
+        labelText: 'Label text',
+        labelColor: '#fff',
+        progressPercentage: 50,
+        inReviewCount: 20,
+        totalCount: 50,
+        translationsCount: 25,
+        topicName: 'Topic 1',
+      };
+      component.opportunityType = 'skill';
+      component.clickActionButton.emit = () =>
+        jasmine.createSpy('click', () => {});
+      component.labelRequired = true;
+      component.progressBarRequired = true;
+      component.opportunityHeadingTruncationLength = 35;
+      fixture.detectChanges();
+      component.ngOnInit();
+    });
+
+    it('should initialize component properties after component is initialized', () => {
+      expect(component.opportunityDataIsLoading).toBe(false);
+      expect(component.labelText).toBe('Label text');
+      expect(component.labelStyle).toEqual({
+        'background-color': '#fff',
+      });
+      expect(component.opportunityHeadingTruncationLength).toBe(35);
+      expect(component.progressPercentage).toBe('50%');
+      expect(component.correspondingOpportunityDeleted).toBe(false);
+      expect(component.skillProgressBar).toBe(true);
+      expect(component.cardsAvailable).toEqual(5);
+    });
   });
 
   describe('when a translation opportunity has no cards left to translate', () => {
