@@ -94,16 +94,6 @@ indexes:
   - name: last_updated
     direction: desc
 
-- kind: ExplorationOpportunitySummaryModel
-  properties:
-  - name: incomplete_translation_language_codes
-  - name: topic_name
-
-- kind: ExplorationOpportunitySummaryModel
-  properties:
-  - name: language_codes_needing_voice_artists
-  - name: created_on
-
 - kind: ExplorationRecommendationsRealtimeModel
   properties:
   - name: realtime_layer
@@ -315,6 +305,21 @@ indexes:
   properties:
   - name: target_id
   - name: author_id
+
+- kind: GeneralSuggestionModel
+  properties:
+  - name: deleted
+  - name: final_reviewer_id
+  - name: language_code
+  - name: suggestion_type
+  - name: last_updated
+
+- kind: GeneralSuggestionModel
+  properties:
+  - name: deleted
+  - name: final_reviewer_id
+  - name: suggestion_type
+  - name: last_updated
 
 - kind: InteractionAnswerSummariesRealtimeModel
   properties:
@@ -849,3 +854,8 @@ indexes:
   - name: learner_id
   - name: created_on
     direction: desc
+
+- kind: BlogPostSummaryModel
+  properties:
+  - name: tags
+  - name: published_on

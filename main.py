@@ -485,8 +485,8 @@ URLS = [
         contributor_dashboard.ContributionOpportunitiesHandler,
     ),
     get_redirect_route(
-        r'%s' % feconf.CONTRIBUTOR_OPPORTUNITIES_DATA_V2_URL,
-        contributor_dashboard.ContributionOpportunitiesHandlerV2,
+        r'%s' % feconf.TRANSLATION_OPPORTUNITIES_URL,
+        contributor_dashboard.TranslationOpportunitiesHandler,
     ),
     get_redirect_route(
         r'%s' % feconf.OPPORTUNITIES_COUNT_URL,
@@ -501,20 +501,12 @@ URLS = [
         contributor_dashboard.ReviewableOpportunitiesHandler,
     ),
     get_redirect_route(
-        r'%s' % feconf.REVIEWABLE_OPPORTUNITIES_V2_URL,
-        contributor_dashboard.ReviewableOpportunitiesHandlerV2,
-    ),
-    get_redirect_route(
         r'%s' % feconf.PINNED_OPPORTUNITIES_URL,
         contributor_dashboard.LessonsPinningHandler,
     ),
     get_redirect_route(
-        r'/gettranslatabletexthandler',
-        contributor_dashboard.TranslatableTextHandler,
-    ),
-    get_redirect_route(
-        r'%s' % feconf.TRANSLATABLE_CONTENTS_V2_URL,
-        contributor_dashboard.TranslatableContentsHandlerV2,
+        r'%s' % feconf.TRANSLATABLE_CONTENTS_URL,
+        contributor_dashboard.TranslatableContentsHandler,
     ),
     get_redirect_route(
         r'%s' % feconf.MACHINE_TRANSLATION_DATA_URL,
@@ -779,9 +771,6 @@ URLS = [
     get_redirect_route('/library', library.OldLibraryRedirectPage),
     get_redirect_route(
         r'%s' % feconf.LIBRARY_INDEX_DATA_URL, library.LibraryIndexHandler
-    ),
-    get_redirect_route(
-        r'%s' % feconf.LIBRARY_GROUP_DATA_URL, library.LibraryGroupIndexHandler
     ),
     get_redirect_route(r'/gallery', library.LibraryRedirectPage),
     get_redirect_route(r'/contribute', library.LibraryRedirectPage),
@@ -1509,9 +1498,24 @@ for page in constants.PAGES_REGISTERED_WITH_FRONTEND.values():
 # Manually redirect routes with url fragments to the oppia root page.
 URLS.extend(
     (
+        # Error pages for the status codes the frontend error page supports
+        # (see ErrorPageRootComponent.validStatusCodes) are rendered by the
+        # frontend from the status code in the route, so the backend serves the
+        # oppia root page with a 200 status instead of returning a 404 status
+        # for a known error URL. Any other status code falls through to the
+        # catch-all 404 handler below, so an undefined error URL still returns a
+        # 404 instead of a misleading 200.
+        get_redirect_route(
+            r'/error/<status_code:(400|401|404|500)>',
+            oppia_root.OppiaRootPage,
+        ),
         get_redirect_route(r'/profile/<username>', oppia_root.OppiaRootPage),
         get_redirect_route(
             r'/collection/<collection_id>', oppia_root.OppiaRootPage
+        ),
+        get_redirect_route(
+            r'%s/<collection_id>' % feconf.COLLECTION_EDITOR_URL_PREFIX,
+            oppia_root.OppiaRootPage,
         ),
         get_redirect_route(
             r'%s/story/<story_url_fragment>' % feconf.TOPIC_VIEWER_URL_PREFIX,
@@ -1595,6 +1599,36 @@ URLS.extend(
         ),
         get_redirect_route(
             r'%s/<exploration_id>' % feconf.LESSON_URL_PREFIX,
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'%s/<exploration_id>' % feconf.LESSON_URL_EMBED_PREFIX,
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'/edit-certificate-assessment-offering/<certificate_offering_id>',
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'/certificate-assessment/<certificate_id>',
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'/certificate-assessment-result/<attempt_id>',
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'/edit-learner-group/<learner_group_id>', oppia_root.OppiaRootPage
+        ),
+        get_redirect_route(
+            r'/learner-group/<learner_group_id>', oppia_root.OppiaRootPage
+        ),
+        get_redirect_route(
+            r'/learn/<classroom_url_fragment>/certificate-offering-available',
+            oppia_root.OppiaRootPage,
+        ),
+        get_redirect_route(
+            r'/technical-feedback-dashboard/<team>/<report_id>',
             oppia_root.OppiaRootPage,
         ),
     )
