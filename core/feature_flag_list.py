@@ -42,7 +42,6 @@ class FeatureNames(enum.Enum):
     )
     SERIAL_CHAPTER_LAUNCH_LEARNER_VIEW = 'serial_chapter_launch_learner_view'
     SHOW_REDESIGNED_LEARNER_DASHBOARD = 'show_redesigned_learner_dashboard'
-    SHOW_TRANSLATION_SIZE = 'show_translation_size'
     CD_ADMIN_DASHBOARD_NEW_UI = 'cd_admin_dashboard_new_ui'
     IS_IMPROVEMENTS_TAB_ENABLED = 'is_improvements_tab_enabled'
     LEARNER_GROUPS_ARE_ENABLED = 'learner_groups_are_enabled'
@@ -70,9 +69,6 @@ class FeatureNames(enum.Enum):
         'highlight_sentences_during_automatic_voiceover_playback'
     )
     SHOW_RESTRUCTURED_STUDY_GUIDES = 'show_restructured_study_guides'
-    ENABLE_TRANSLATION_OPPORTUNITIES_WITH_NEW_OPP_MODELS = (
-        'enable_translation_opps_with_new_opp_models'
-    )
     ENABLE_WORKED_EXAMPLES_RTE_COMPONENT = (
         'enable_worked_examples_rte_component'
     )
@@ -130,7 +126,6 @@ class FeatureNames(enum.Enum):
 # Names of features in dev stage, the corresponding feature flag instances must
 # be in dev stage otherwise it will cause a test error in the backend test.
 DEV_FEATURES_LIST = [
-    FeatureNames.SHOW_TRANSLATION_SIZE,
     FeatureNames.ENABLE_CERTIFICATE_ASSESSMENT,
     FeatureNames.ENABLE_DROPDOWN_PAGINATION,
 ]
@@ -147,7 +142,6 @@ TEST_FEATURES_LIST: List[FeatureNames] = [
     FeatureNames.ENABLE_FINANCIAL_LITERACY_CAMPAIGN_BANNER_TEST_MODE,
     FeatureNames.ENABLE_AUTOMATIC_TRANSLATION_SUGGESTIONS,
     FeatureNames.WEB_FEEDBACK_MODAL_ENABLED,
-    FeatureNames.ENABLE_TRANSLATION_OPPORTUNITIES_WITH_NEW_OPP_MODELS,
     FeatureNames.STORY_EDITOR_ARCS,
     FeatureNames.REDESIGNED_TOPIC_VIEWER_PAGE,
     FeatureNames.EXPLORATION_EDITOR_NEW_CREATOR_FEEDBACK_TAB,
@@ -214,13 +208,6 @@ FEATURE_FLAG_NAME_TO_DESCRIPTION_AND_FEATURE_STAGE = {
         (
             'This flag is to show redesigned learner dashboard.',
             feature_flag_domain.ServerMode.PROD,
-        )
-    ),
-    FeatureNames.SHOW_TRANSLATION_SIZE.value: (
-        (
-            'This flag is to show translation size on translation cards in '
-            'contributor dashboard.',
-            feature_flag_domain.ServerMode.DEV,
         )
     ),
     FeatureNames.CD_ADMIN_DASHBOARD_NEW_UI.value: (
@@ -295,13 +282,6 @@ FEATURE_FLAG_NAME_TO_DESCRIPTION_AND_FEATURE_STAGE = {
             '(the actual content displayed by the study guides will be the '
             'same, just the user interface will be different).',
             feature_flag_domain.ServerMode.PROD,
-        )
-    ),
-    FeatureNames.ENABLE_TRANSLATION_OPPORTUNITIES_WITH_NEW_OPP_MODELS.value: (
-        (
-            'This flag enables the new translation opportunity structure to '
-            'the contributor dashboard.',
-            feature_flag_domain.ServerMode.TEST,
         )
     ),
     FeatureNames.SHOW_REGENERATED_VOICEOVERS_TO_LEARNERS.value: (

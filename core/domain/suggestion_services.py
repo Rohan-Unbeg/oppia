@@ -3391,28 +3391,6 @@ def _get_topic_id_of_translation_target(
         str. The ID of the topic that the target belongs to, or
         'uncategorized' if the target is not part of any topic.
     """
-    # The exploration opportunity summaries are removed once the new
-    # opportunity models are rolled out, so they are only consulted while the
-    # feature flag is off. With the flag on, every entity type resolves its
-    # topic from the new opportunity model.
-    if (
-        suggestion.target_type == feconf.ENTITY_TYPE_EXPLORATION
-        and not feature_flag_services.is_feature_flag_enabled(
-            feature_flag_list.FeatureNames.ENABLE_TRANSLATION_OPPORTUNITIES_WITH_NEW_OPP_MODELS.value,
-            None,
-        )
-    ):
-        exp_opportunity = (
-            opportunity_services.get_exploration_opportunity_summary_by_id(
-                suggestion.target_id
-            )
-        )
-        # We can confirm that exp_opportunity will not be None since there
-        # should be an assigned opportunity for a given translation. Hence we
-        # can rule out the possibility of None for mypy type checking.
-        assert exp_opportunity is not None
-        return exp_opportunity.topic_id
-
     opportunity = (
         opportunity_services.get_translation_opportunities_by_entity_ids(
             suggestion.target_type, [suggestion.target_id]
@@ -4538,6 +4516,12 @@ def increment_question_reviewer_total_stats(
         edited_by_reviewer: bool. A flag that indicates whether the suggestion
             is edited by the reviewer.
     """
+    if question_reviewer_total_stat.reviewed_questions_count == 0:
+        # The stats row may have been created with zero counts when review
+        # rights were granted, so the first review sets the real first date.
+        question_reviewer_total_stat.first_contribution_date = (
+            last_contribution_date.date()
+        )
     question_reviewer_total_stat.reviewed_questions_count += 1
     if suggestion_is_accepted:
         question_reviewer_total_stat.accepted_questions_count += 1
@@ -4667,6 +4651,54 @@ def generate_contributor_certificate_data(
     return data.to_dict() if data is not None else None
 
 
+def _count_words_in_translation_suggestions(
+    suggestion_source_models: Sequence[
+        suggestion_models.GeneralSuggestionModel
+    ],
+) -> int:
+    """Counts the total number of translated words across the given
+    translation suggestion models.
+
+    Args:
+        suggestion_source_models: list(GeneralSuggestionModel). Translation
+            suggestion models to count words for.
+
+    Returns:
+        int. The total number of words across the given suggestions.
+    """
+    words_count = 0
+    for model in suggestion_source_models:
+        suggestion = get_suggestion_from_model(model)
+        suggestion_change = suggestion.change_cmd
+        data_is_list = (
+            translation_domain.TranslatableContentFormat.is_data_format_list(
+                suggestion_change.data_format
+            )
+        )
+        if suggestion_change.cmd == 'add_written_translation' and data_is_list:
+            words_count += sum(
+                len(item.split()) for item in suggestion_change.translation_html
+            )
+        else:
+            # Retrieve the html content that is emphasized on the
+            # Contributor Dashboard pages. This content is what stands
+            # out for each suggestion when a user views a list of
+            # suggestions.
+            get_html_representing_suggestion = (
+                SUGGESTION_EMPHASIZED_TEXT_GETTER_FUNCTIONS[
+                    suggestion.suggestion_type
+                ]
+            )
+            plain_text = _get_plain_text_from_html_content_string(
+                get_html_representing_suggestion(suggestion)
+            )
+
+            words = plain_text.split(' ')
+            words_without_empty_strings = [word for word in words if word != '']
+            words_count += len(words_without_empty_strings)
+    return words_count
+
+
 def _generate_translation_contributor_certificate_data(
     language_code: str,
     from_date: datetime.datetime,
@@ -4714,40 +4746,23 @@ def _generate_translation_contributor_certificate_data(
             language_description.find('(') + 1 : language_description.find(')')
         ]
 
-    suggestions = suggestion_models.GeneralSuggestionModel.get_translation_suggestions_submitted_within_given_dates(
+    submitted_suggestions = suggestion_models.GeneralSuggestionModel.get_translation_suggestions_submitted_within_given_dates(
+        from_date, to_date_to_fetch_contributions, user_id, language_code
+    )
+    # Translations the user reviewed (accepted or rejected) in the same
+    # language and date range are combined into the same certificate so that a
+    # user who both translates and reviews receives one combined certificate.
+    reviewed_suggestions = suggestion_models.GeneralSuggestionModel.get_translation_suggestions_reviewed_within_given_dates(
         from_date, to_date_to_fetch_contributions, user_id, language_code
     )
 
-    words_count = 0
-    for model in suggestions:
-        suggestion = get_suggestion_from_model(model)
-        suggestion_change = suggestion.change_cmd
-        data_is_list = (
-            translation_domain.TranslatableContentFormat.is_data_format_list(
-                suggestion_change.data_format
-            )
-        )
-        if suggestion_change.cmd == 'add_written_translation' and data_is_list:
-            words_count += sum(
-                len(item.split()) for item in suggestion_change.translation_html
-            )
-        else:
-            # Retrieve the html content that is emphasized on the
-            # Contributor Dashboard pages. This content is what stands
-            # out for each suggestion when a user views a list of
-            # suggestions.
-            get_html_representing_suggestion = (
-                SUGGESTION_EMPHASIZED_TEXT_GETTER_FUNCTIONS[
-                    suggestion.suggestion_type
-                ]
-            )
-            plain_text = _get_plain_text_from_html_content_string(
-                get_html_representing_suggestion(suggestion)
-            )
-
-            words = plain_text.split(' ')
-            words_without_empty_strings = [word for word in words if word != '']
-            words_count += len(words_without_empty_strings)
+    translated_word_count = _count_words_in_translation_suggestions(
+        submitted_suggestions
+    )
+    reviewed_word_count = _count_words_in_translation_suggestions(
+        reviewed_suggestions
+    )
+    words_count = translated_word_count + reviewed_word_count
     # Go to the below link for more information about how we count hours
     # contributed.# Goto the below link for more information.
     # https://docs.google.com/spreadsheets/d/1ykSNwPLZ5qTCkuO21VLdtm_2SjJ5QJ0z0PlVjjSB4ZQ/edit?usp=sharing
@@ -4764,6 +4779,8 @@ def _generate_translation_contributor_certificate_data(
         words_count,
         language_description,
         certificate_profile_name,
+        translated_word_count=translated_word_count,
+        reviewed_word_count=reviewed_word_count,
     )
 
 
@@ -4797,9 +4814,15 @@ def _generate_question_contributor_certificate_data(
     # the to_date are also counted for the certificate.
     to_date_to_fetch_contributions = to_date + datetime.timedelta(days=1)
 
-    suggestions = suggestion_models.GeneralSuggestionModel.get_question_suggestions_submitted_within_given_dates(
+    submitted_suggestions = suggestion_models.GeneralSuggestionModel.get_question_suggestions_submitted_within_given_dates(
         from_date, to_date_to_fetch_contributions, user_id
     )
+    # Questions the user reviewed (accepted or rejected) in the date range are
+    # combined into the same certificate.
+    reviewed_suggestions = suggestion_models.GeneralSuggestionModel.get_question_suggestions_reviewed_within_given_dates(
+        from_date, to_date_to_fetch_contributions, user_id
+    )
+    suggestions = list(submitted_suggestions) + list(reviewed_suggestions)
 
     minutes_contributed = 0
     for model in suggestions:
@@ -4835,4 +4858,8 @@ def _generate_question_contributor_certificate_data(
         0,
         None,
         certificate_profile_name,
+        # Word-count breakdown is translation-specific; question certificates
+        # measure effort in minutes, so these are not applicable here.
+        translated_word_count=0,
+        reviewed_word_count=0,
     )

@@ -30,12 +30,11 @@ import json
 import re
 import string
 
-from core import feature_flag_list, feconf, schema_utils, utils
+from core import feconf, schema_utils, utils
 from core.constants import constants
-from core.domain import html_cleaner  # pylint: disable=invalid-import-from
 from core.domain import (  # pylint: disable=invalid-import-from
     change_domain,
-    feature_flag_services,
+    html_cleaner,  # pylint: disable=invalid-import-from
     html_validation_service,
     interaction_registry,
     param_domain,
@@ -1582,7 +1581,6 @@ class Exploration(translation_domain.BaseTranslatableObject):
 
     def get_translatable_contents_collection(
         self,
-        override_metadata_feature_flag: bool = False,
         # Here we use type Any because the keyword arguments vary
         # depending on the specific translatable object subclass.
         **kwargs: Any,
@@ -1590,8 +1588,6 @@ class Exploration(translation_domain.BaseTranslatableObject):
         """Get all translatable fields in the exploration.
 
         Args:
-            override_metadata_feature_flag: bool. Whether to override the
-                metadata feature flag check.
             **kwargs: Dict[str, Any]. Additional keyword arguments.
 
         Returns:
@@ -1609,34 +1605,27 @@ class Exploration(translation_domain.BaseTranslatableObject):
                 )
             )
 
-        if (
-            override_metadata_feature_flag
-            or feature_flag_services.is_feature_flag_enabled(
-                feature_flag_list.FeatureNames.ENABLE_TRANSLATION_OPPORTUNITIES_WITH_NEW_OPP_MODELS.value,
-                None,
+        if self.title:
+            translatable_contents_collection.add_translatable_field(
+                feconf.EXPLORATION_TITLE_CONTENT_ID,
+                translation_domain.ContentType.METADATA,
+                translation_domain.TranslatableContentFormat.UNICODE_STRING,
+                self.title,
             )
-        ):
-            if self.title:
-                translatable_contents_collection.add_translatable_field(
-                    feconf.EXPLORATION_TITLE_CONTENT_ID,
-                    translation_domain.ContentType.METADATA,
-                    translation_domain.TranslatableContentFormat.UNICODE_STRING,
-                    self.title,
-                )
-            if self.objective:
-                translatable_contents_collection.add_translatable_field(
-                    feconf.EXPLORATION_OBJECTIVE_CONTENT_ID,
-                    translation_domain.ContentType.METADATA,
-                    translation_domain.TranslatableContentFormat.UNICODE_STRING,
-                    self.objective,
-                )
-            for idx, tag in enumerate(self.tags):
-                translatable_contents_collection.add_translatable_field(
-                    f'{feconf.EXPLORATION_TAG_CONTENT_ID_PREFIX}_{idx}',
-                    translation_domain.ContentType.METADATA,
-                    translation_domain.TranslatableContentFormat.UNICODE_STRING,
-                    tag,
-                )
+        if self.objective:
+            translatable_contents_collection.add_translatable_field(
+                feconf.EXPLORATION_OBJECTIVE_CONTENT_ID,
+                translation_domain.ContentType.METADATA,
+                translation_domain.TranslatableContentFormat.UNICODE_STRING,
+                self.objective,
+            )
+        for idx, tag in enumerate(self.tags):
+            translatable_contents_collection.add_translatable_field(
+                f'{feconf.EXPLORATION_TAG_CONTENT_ID_PREFIX}_{idx}',
+                translation_domain.ContentType.METADATA,
+                translation_domain.TranslatableContentFormat.UNICODE_STRING,
+                tag,
+            )
 
         return translatable_contents_collection
 
@@ -1657,7 +1646,7 @@ class Exploration(translation_domain.BaseTranslatableObject):
         empty list; 'states_schema_version' is taken from feconf; 'states_dict'
         is derived from feconf; 'param_specs_dict' is an empty dict; 'blurb' and
         'author_notes' are initialized to empty string; 'version' is
-        initializated to 0.
+        initialized to feconf.INITIAL_ENTITY_VERSION.
 
         Args:
             exploration_id: str. The id of the exploration.
@@ -1699,7 +1688,7 @@ class Exploration(translation_domain.BaseTranslatableObject):
             states_dict,
             {},
             [],
-            0,
+            feconf.INITIAL_ENTITY_VERSION,
             feconf.DEFAULT_AUTO_TTS_ENABLED,
             content_id_generator.next_content_id_index,
             True,
@@ -1709,7 +1698,7 @@ class Exploration(translation_domain.BaseTranslatableObject):
     def from_dict(
         cls,
         exploration_dict: ExplorationDict,
-        exploration_version: int = 0,
+        exploration_version: int = feconf.INITIAL_ENTITY_VERSION,
         exploration_created_on: Optional[datetime.datetime] = None,
         exploration_last_updated: Optional[datetime.datetime] = None,
     ) -> Exploration:

@@ -24,9 +24,10 @@ import uuid
 from types import SimpleNamespace
 
 from core import constants, feconf, schema_utils
-from core.domain import exp_domain, exp_fetchers, exp_services
-from core.domain import platform_parameter_list as param_list
 from core.domain import (
+    exp_domain,
+    exp_fetchers,
+    exp_services,
     state_domain,
     story_domain,
     story_services,
@@ -41,6 +42,7 @@ from core.domain import (
     voiceover_regeneration_services,
     voiceover_services,
 )
+from core.domain import platform_parameter_list as param_list
 from core.platform import models
 from core.tests import test_utils
 
@@ -2077,9 +2079,11 @@ class VoiceoverRegenerationTests(test_utils.GenericTestBase):
             ),
         ):
             with self.swap(
-                opportunity_models.ExplorationOpportunitySummaryModel,
-                'get_by_id',
-                lambda _exploration_id: SimpleNamespace(topic_id='topic_1'),
+                opportunity_models.TranslationOpportunityModel,
+                'get',
+                lambda _model_id, strict=True: SimpleNamespace(
+                    topic_ids=['topic_1']
+                ),
             ):
                 with self.swap(
                     topic_fetchers,
@@ -2144,9 +2148,9 @@ class VoiceoverRegenerationTests(test_utils.GenericTestBase):
             ),
         ):
             with self.swap(
-                opportunity_models.ExplorationOpportunitySummaryModel,
-                'get_by_id',
-                lambda _exploration_id: (_ for _ in ()).throw(
+                opportunity_models.TranslationOpportunityModel,
+                'get',
+                lambda _model_id, strict=True: (_ for _ in ()).throw(
                     Exception('topic lookup failed')
                 ),
             ):
